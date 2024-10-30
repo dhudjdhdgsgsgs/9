@@ -30,13 +30,14 @@ jobs:
 
     - name: Create config.yml
       run: |
-        echo "tunnel: 7d92c3d4-daea-488e-bd1f-a78c6c673adf" | sudo tee /root/.cloudflared/config.yml
-        echo "credentials-file: /root/.cloudflared/7d92c3d4-daea-488e-bd1f-a78c6c673adf.json" | sudo tee -a /root/.cloudflared/config.yml
-        echo "" | sudo tee -a /root/.cloudflared/config.yml
-        echo "ingress:" | sudo tee -a /root/.cloudflared/config.yml
-        echo "  - hostname: demo.andik252.biz.id  # Subdomain yang ditetapkan di Cloudflare" | sudo tee -a /root/.cloudflared/config.yml
-        echo "    service: ssh://localhost:22  # Port SSH" | sudo tee -a /root/.cloudflared/config.yml
-        echo "  - service: http_status:404" | sudo tee -a /root/.cloudflared/config.yml
+        mkdir -p ~/.cloudflared
+        echo "tunnel: 7d92c3d4-daea-488e-bd1f-a78c6c673adf" > ~/.cloudflared/config.yml
+        echo "credentials-file: /root/.cloudflared/7d92c3d4-daea-488e-bd1f-a78c6c673adf.json" >> ~/.cloudflared/config.yml
+        echo "" >> ~/.cloudflared/config.yml
+        echo "ingress:" >> ~/.cloudflared/config.yml
+        echo "  - hostname: demo.andik252.biz.id  # Subdomain yang ditetapkan di Cloudflare" >> ~/.cloudflared/config.yml
+        echo "    service: ssh://localhost:22  # Port SSH" >> ~/.cloudflared/config.yml
+        echo "  - service: http_status:404" >> ~/.cloudflared/config.yml
 
     - name: Authenticate Cloudflared
       run: |
@@ -44,7 +45,7 @@ jobs:
 
     - name: Run Cloudflare Tunnel
       run: |
-        cloudflared tunnel --config /root/.cloudflared/config.yml run &
+        cloudflared tunnel --config ~/.cloudflared/config.yml run
 
     - name: Keep alive
       run: |
