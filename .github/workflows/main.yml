@@ -28,6 +28,15 @@ jobs:
         sudo mv cloudflared-linux-amd64 /usr/local/bin/cloudflared
         sudo chmod +x /usr/local/bin/cloudflared
 
+    - name: Authenticate Cloudflared
+      run: |
+        echo "${{ secrets.CLOUDFLARE_TOKEN }}" | cloudflared tunnel login
+
+    - name: Download Tunnel Credentials
+      run: |
+        mkdir -p /root/.cloudflared
+        cp ~/.cloudflared/*.json /root/.cloudflared/  # Salin file JSON ke direktori yang benar
+
     - name: Create config.yml
       run: |
         mkdir -p ~/.cloudflared
@@ -45,10 +54,6 @@ jobs:
           echo "Credentials file not found. Please make sure it exists."
           exit 1
         fi
-
-    - name: Authenticate Cloudflared
-      run: |
-        echo "${{ secrets.CLOUDFLARE_TOKEN }}" | cloudflared tunnel login
 
     - name: Run Cloudflare Tunnel
       run: |
