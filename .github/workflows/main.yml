@@ -39,6 +39,13 @@ jobs:
         echo "    service: ssh://localhost:22  # Port SSH" >> ~/.cloudflared/config.yml
         echo "  - service: http_status:404" >> ~/.cloudflared/config.yml
 
+    - name: Check for credentials file
+      run: |
+        if [ ! -f /root/.cloudflared/7d92c3d4-daea-488e-bd1f-a78c6c673adf.json ]; then
+          echo "Credentials file not found. Please make sure it exists."
+          exit 1
+        fi
+
     - name: Authenticate Cloudflared
       run: |
         echo "${{ secrets.CLOUDFLARE_TOKEN }}" | cloudflared tunnel login
