@@ -22,18 +22,29 @@ jobs:
         sudo sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
         sudo service ssh restart  # Restart SSH service for changes to take effect
 
-    - name: Setup ngrok
+    - name: Install Cloudflared
       run: |
-        curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
-        echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
-        sudo apt update && sudo apt install -y ngrok
-        ngrok config add-authtoken ${{ secrets.TOKEN }}
-        nohup ngrok tcp 22 &
+        wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+        sudo mv cloudflared-linux-amd64 /usr/local/bin/cloudflared
+        sudo chmod +x /usr/local/bin/cloudflared
 
-    - name: Get ngrok URL
+    - name: Create config.yml
       run: |
-        sleep 10
-        curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url'
+        echo "tunnel: 7d92c3d4-daea-488e-bd1f-a78c6c673adf" | sudo tee /root/.cloudflared/config.yml
+        echo "credentials-file: /root/.cloudflared/7d92c3d4-daea-488e-bd1f-a78c6c673adf.json" | sudo tee -a /root/.cloudflared/config.yml
+        echo "" | sudo tee -a /root/.cloudflared/config.yml
+        echo "ingress:" | sudo tee -a /root/.cloudflared/config.yml
+        echo "  - hostname: demo.andik252.biz.id  # Subdomain yang ditetapkan di Cloudflare" | sudo tee -a /root/.cloudflared/config.yml
+        echo "    service: ssh://localhost:22  # Port SSH" | sudo tee -a /root/.cloudflared/config.yml
+        echo "  - service: http_status:404" | sudo tee -a /root/.cloudflared/config.yml
+
+    - name: Authenticate Cloudflared
+      run: |
+        echo "${{ secrets.CLOUDFLARE_TOKEN }}" | cloudflared tunnel login
+
+    - name: Run Cloudflare Tunnel
+      run: |
+        cloudflared tunnel --config /root/.cloudflared/config.yml run &
 
     - name: Keep alive
       run: |
