@@ -1,45 +1,29 @@
-name: Ubuntu ttyd
+name: Cloudflared Tunnel
 
-on:
+on: 
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
-  run-terminal:
+  run-cloudflared:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      - name: Install ttyd (Web-based Terminal)
-        run: |
-          sudo apt update
-          sudo apt install ttyd
+    - name: Install Cloudflared
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cloudflared
 
-      - name: Start ttyd (Terminal on Web with Authentication)
-        run: |
-          nohup ttyd -p 8080 -c user:${{ secrets.PASSWORD }} bash &
-
-      - name: Install Cloudflared
-        run: |
-          sudo wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O /usr/local/bin/cloudflared
-          sudo chmod +x /usr/local/bin/cloudflared
-
-      - name: Create Cloudflared Config File
-        run: |
-          mkdir -p /root/.cloudflared
-          cat <<EOT > /root/.cloudflared/config.yml
-          tunnel: 7d92c3d4-daea-488e-bd1f-a78c6c673adf
-          credentials-file: /root/.cloudflared/.json
-          ingress:
-            - hostname: demo.andik252.biz.id
-              service: http://localhost:8080
-            - service: http_status:404
-          EOT
-
-      - name: Run Cloudflared Tunnel with Config
-        run: |
-          nohup cloudflared tunnel --config /root/.cloudflared/config.yml run 7d92c3d4-daea-488e-bd1f-a78c6c673adf &
-
-      - name: Keep alive
-        run: |
-          while true; do sleep 60; done
+    - name: Run Cloudflared Tunnel
+      env:
+        CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
+      run: |
+        cloudflared tunnel run demo &
+        
+        # Keep the workflow alive
+        while true; do sleep 60; done
