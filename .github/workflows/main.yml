@@ -13,7 +13,7 @@ jobs:
     - name: Install ttyd (Web-based Terminal)
       run: |
         sudo apt update
-        sudo apt install ttyd
+        sudo apt install -y ttyd
 
     - name: Start ttyd (Terminal on Web with Authentication)
       run: |
@@ -21,7 +21,7 @@ jobs:
 
     - name: Install cloudflared
       run: |
-        wget -q https://bin.equinox.io/c/111111/cloudflared-linux-amd64 -O /usr/local/bin/cloudflared
+        sudo wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O /usr/local/bin/cloudflared
         sudo chmod +x /usr/local/bin/cloudflared
 
     - name: Authenticate with Cloudflare
