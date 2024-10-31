@@ -13,25 +13,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Add Cloudflare repository and install Cloudflared
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y curl
-          curl -L https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg
-          echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/ jammy main" | sudo tee /etc/apt/sources.list.d/cloudflare.list
-          sudo apt-get update
-          sudo apt-get install -y cloudflared
+
+      - name: Install Cloudflared
+        run: |
+          curl -LO https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+          sudo mv cloudflared-linux-amd64 /usr/local/bin/cloudflared
+          sudo chmod +x /usr/local/bin/cloudflared
 
       - name: Authenticate with Cloudflare
         run: |
           echo ${{ secrets.CLOUDFLARE_TOKEN }} | cloudflared tunnel login
 
-      - name: Create Cloudflare Tunnel
-        run: |
-          cloudflared tunnel create demo
-          cloudflared tunnel route dns demo your-subdomain.example.com
-
-      - name: Start Cloudflare Tunnel
+      - name: Start Existing Cloudflare Tunnel
         run: |
           cloudflared tunnel run demo &
           echo "Keeping the tunnel alive..."
