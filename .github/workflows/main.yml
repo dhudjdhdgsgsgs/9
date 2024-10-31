@@ -1,4 +1,4 @@
-name: Ubuntu ttyd 
+name: Ubuntu ttyd
 
 on: 
   workflow_dispatch:
@@ -19,15 +19,15 @@ jobs:
       run: |
         nohup ttyd -p 8080 -c user:Root123 bash &
 
-    - name: Install Cloudflared
+    - name: Install cloudflared
       run: |
         curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
         sudo chmod +x cloudflared
         sudo mv cloudflared /usr/local/bin/
 
-    - name: Start Cloudflared Tunnel
+    - name: Start Cloudflare Tunnel
       run: |
-        cloudflared tunnel --url http://localhost:8080 --no-autoupdate --name demo --token ${{ secrets.CLOUDFLARE_TOKEN }}
+        nohup cloudflared tunnel --url http://localhost:8080 --no-autoupdate --token ${{ secrets.CLOUDFLARE_TOKEN }} &
 
     - name: Keep alive
       run: |
