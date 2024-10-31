@@ -24,14 +24,14 @@ jobs:
         wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
         sudo dpkg -i cloudflared-linux-amd64.deb
 
-    - name: Start cloudflared tunnel
+    - name: Start existing cloudflared tunnel (demo)
       run: |
-        nohup cloudflared tunnel --url http://localhost:8080 --no-autoupdate --token ${{ secrets.CLOUDFLARE_TOKEN }} &
+        nohup cloudflared tunnel run demo --url http://localhost:8080 --no-autoupdate &
 
     - name: Get cloudflared URL
       run: |
         sleep 10
-        cloudflared tunnel list
+        cloudflared tunnel info demo
 
     - name: Keep alive
       run: |
