@@ -1,37 +1,33 @@
 name: Ubuntu ttyd
 
-on: 
+on:
   workflow_dispatch:
 
 jobs:
   run-terminal:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-    - name: Install ttyd (Web-based Terminal)
-      run: |
-        sudo apt update
-        sudo apt install -y ttyd
+      - name: Install ttyd (Web-based Terminal)
+        run: |
+          sudo apt update
+          sudo apt install ttyd
 
-    - name: Start ttyd (Terminal on Web with Authentication)
-      run: |
-        nohup ttyd -p 8080 -c user:Root123 bash &
+      - name: Start ttyd (Terminal on Web with Authentication)
+        run: |
+          nohup ttyd -p 8080 -c user:${{ secrets.PASSWORD }} bash &
 
-    - name: Install cloudflared
-      run: |
-        curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
-        sudo chmod +x cloudflared
-        sudo mv cloudflared /usr/local/bin/
+      - name: Install Cloudflared
+        run: |
+          sudo wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O /usr/local/bin/cloudflared
+          sudo chmod +x /usr/local/bin/cloudflared
 
-    - name: Start Cloudflare Tunnel and Get URL
-      run: |
-        nohup cloudflared tunnel --url http://localhost:8080 --no-autoupdate --token ${{ secrets.CLOUDFLARE_TOKEN }} > cloudflared.log 2>&1 &
-        sleep 5
-        echo "Cloudflare Tunnel URL:"
-        cat cloudflared.log | grep -o 'https://[^ ]*'
+      - name: Run Cloudflared Tunnel
+        run: |
+          nohup cloudflared tunnel run demo &
 
-    - name: Keep alive
-      run: |
-        while true; do sleep 60; done
+      - name: Keep alive
+        run: |
+          while true; do sleep 60; done
