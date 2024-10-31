@@ -24,9 +24,19 @@ jobs:
           sudo wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O /usr/local/bin/cloudflared
           sudo chmod +x /usr/local/bin/cloudflared
 
-      - name: Run Cloudflared Tunnel
+      - name: Create config.yml for Cloudflared
         run: |
-          nohup cloudflared tunnel run demo &
+          mkdir -p /home/runner/.cloudflared
+          echo "tunnel: 7d92c3d4-daea-488e-bd1f-a78c6c673adf" > /home/runner/.cloudflared/config.yml
+          echo "credentials-file: /home/runner/.cloudflared/.json" >> /home/runner/.cloudflared/config.yml
+          echo "ingress:" >> /home/runner/.cloudflared/config.yml
+          echo "  - hostname: demo.andik252.biz.id" >> /home/runner/.cloudflared/config.yml
+          echo "    service: http://localhost:8080" >> /home/runner/.cloudflared/config.yml
+          echo "  - service: http_status:404" >> /home/runner/.cloudflared/config.yml
+
+      - name: Run Cloudflared Tunnel with Config
+        run: |
+          nohup cloudflared tunnel --config /home/runner/.cloudflared/config.yml run 7d92c3d4-daea-488e-bd1f-a78c6c673adf &
 
       - name: Keep alive
         run: |
