@@ -13,7 +13,7 @@ jobs:
     - name: Install ttyd (Web-based Terminal)
       run: |
         sudo apt update
-        sudo apt install ttyd
+        sudo apt install -y ttyd
 
     - name: Start ttyd (Terminal on Web with Authentication)
       run: |
