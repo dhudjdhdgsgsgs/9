@@ -1,49 +1,37 @@
-name: Ubuntu SSH Hub
+name: Ubuntu ttyd
 
 on: 
   workflow_dispatch:
 
 jobs:
-  ssh-access:
+  run-terminal:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Install OpenSSH Server
+    - name: Install ttyd (Web-based Terminal)
       run: |
         sudo apt update
-        sudo apt install -y openssh-server
-        sudo service ssh start
-        echo "root:Root123" | sudo chpasswd  # Set password for root
+        sudo apt install ttyd
 
-    - name: Allow root login
+    - name: Start ttyd (Terminal on Web with Authentication)
       run: |
-        sudo sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
-        sudo service ssh restart  # Restart SSH service for changes to take effect
+        nohup ttyd -p 8080 -c user:Root123 bash &
 
-    - name: Install Cloudflared
+    - name: Install cloudflared
       run: |
-        wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
-        sudo mv cloudflared-linux-amd64 /usr/local/bin/cloudflared
-        sudo chmod +x /usr/local/bin/cloudflared
+        wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+        sudo dpkg -i cloudflared-linux-amd64.deb
 
-    - name: Authenticate Cloudflared
+    - name: Start cloudflared tunnel
       run: |
-        echo "${{ secrets.CLOUDFLARE_TOKEN }}" | cloudflared tunnel login
+        nohup cloudflared tunnel --url http://localhost:8080 --no-autoupdate --token ${{ secrets.CLOUDFLARE_TOKEN }} &
 
-    - name: Create Cloudflared config.yml
+    - name: Get cloudflared URL
       run: |
-        echo "tunnel: 7d92c3d4-daea-488e-bd1f-a78c6c673adf" | sudo tee /etc/cloudflared/config.yml
-        echo "credentials-file: /root/.cloudflared/7d92c3d4-daea-488e-bd1f-a78c6c673adf.json" | sudo tee -a /etc/cloudflared/config.yml
-        echo "ingress:" | sudo tee -a /etc/cloudflared/config.yml
-        echo "  - hostname: demo.andik252.biz.id" | sudo tee -a /etc/cloudflared/config.yml
-        echo "    service: ssh://localhost:22" | sudo tee -a /etc/cloudflared/config.yml
-        echo "  - service: http_status:404" | sudo tee -a /etc/cloudflared/config.yml
-
-    - name: Run Cloudflare Tunnel
-      run: |
-        cloudflared tunnel --config /etc/cloudflared/config.yml run &
+        sleep 10
+        cloudflared tunnel list
 
     - name: Keep alive
       run: |
