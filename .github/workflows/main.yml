@@ -24,9 +24,13 @@ jobs:
         wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
         sudo dpkg -i cloudflared-linux-amd64.deb
 
+    - name: Add Origin Certificate
+      run: |
+        echo "${{ secrets.TUNNEL_ORIGIN_CERT }}" > /tmp/cert.pem
+
     - name: Start existing cloudflared tunnel (demo)
       run: |
-        nohup cloudflared tunnel run demo --url http://localhost:8080 --no-autoupdate &
+        nohup cloudflared tunnel --url http://localhost:8080 --origincert /tmp/cert.pem run demo &
 
     - name: Get cloudflared URL
       run: |
