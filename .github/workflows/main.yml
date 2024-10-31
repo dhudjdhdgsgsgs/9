@@ -13,24 +13,21 @@ jobs:
     - name: Install ttyd (Web-based Terminal)
       run: |
         sudo apt update
-        sudo apt install -y ttyd
+        sudo apt install ttyd
 
     - name: Start ttyd (Terminal on Web with Authentication)
       run: |
         nohup ttyd -p 8080 -c user:Root123 bash &
 
-    - name: Install cloudflared
+    - name: Install Cloudflared
       run: |
-        sudo wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O /usr/local/bin/cloudflared
-        sudo chmod +x /usr/local/bin/cloudflared
+        curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+        sudo chmod +x cloudflared
+        sudo mv cloudflared /usr/local/bin/
 
-    - name: Authenticate with Cloudflare
+    - name: Start Cloudflared Tunnel
       run: |
-        echo ${{ secrets.CLOUDFLARE_TOKEN }} | cloudflared tunnel login
-
-    - name: Start Cloudflare Tunnel
-      run: |
-        nohup cloudflared tunnel --url http://localhost:8080 --no-autoupdate --tunnel-name demo &
+        cloudflared tunnel --url http://localhost:8080 --no-autoupdate --name demo --token ${{ secrets.CLOUDFLARE_TOKEN }}
 
     - name: Keep alive
       run: |
