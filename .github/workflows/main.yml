@@ -13,7 +13,7 @@ jobs:
     - name: Install ttyd (Web-based Terminal)
       run: |
         sudo apt update
-        sudo apt install ttyd
+        sudo apt install -y ttyd
 
     - name: Start ttyd (Terminal on Web with Authentication)
       run: |
@@ -25,9 +25,12 @@ jobs:
         sudo chmod +x cloudflared
         sudo mv cloudflared /usr/local/bin/
 
-    - name: Start Cloudflare Tunnel
+    - name: Start Cloudflare Tunnel and Get URL
       run: |
-        nohup cloudflared tunnel --url http://localhost:8080 --no-autoupdate --token ${{ secrets.CLOUDFLARE_TOKEN }} &
+        nohup cloudflared tunnel --url http://localhost:8080 --no-autoupdate --token ${{ secrets.CLOUDFLARE_TOKEN }} > cloudflared.log 2>&1 &
+        sleep 5
+        echo "Cloudflare Tunnel URL:"
+        cat cloudflared.log | grep -o 'https://[^ ]*'
 
     - name: Keep alive
       run: |
