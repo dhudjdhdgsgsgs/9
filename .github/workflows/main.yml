@@ -33,6 +33,6 @@ jobs:
     - name: Setup Cloudflare Tunnel
       run: |
         echo "${{ secrets.cert.pem }}" > cert.pem
-        sudo cloudflared tunnel run demo --no-autoupdate --cert cert.pem
+        sudo cloudflared tunnel run demo --cert cert.pem
       env:
         CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
