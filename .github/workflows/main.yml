@@ -44,9 +44,18 @@ jobs:
           wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
           sudo dpkg -i cloudflared-linux-amd64.deb
           
+      - name: Verify tunnel token
+        run: |
+          if [ -z "$TUNNEL_TOKEN" ]; then
+            echo "Error: TUNNEL_TOKEN is not set"
+            exit 1
+          fi
+          echo "Tunnel token is configured"
+          
       - name: Start web server
         run: python server.py &
         
       - name: Start cloudflared tunnel
         run: |
-          cloudflared tunnel run --token $TUNNEL_TOKEN
+          echo "Starting tunnel with provided token..."
+          cloudflared tunnel --no-autoupdate run --token "$TUNNEL_TOKEN"
