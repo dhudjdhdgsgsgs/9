@@ -1,58 +1,46 @@
-name: Ubuntu ttyd
-on: workflow_dispatch
+name: Deploy Apache with Cloudflare Tunnel
+
+on:
+  push:
+    branches:
+      - main
 
 jobs:
-  run-terminal:
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Check out the repository
+        uses: actions/checkout@v3
 
-      - name: Install ttyd
+      - name: Install Apache
         run: |
           sudo apt update
-          sudo apt install ttyd
+          sudo apt install -y apache2
 
-      - name: Install Cloudflared
+      - name: Enable and start Apache
         run: |
-          # Download dan install cloudflared
-          sudo mkdir -p --mode=0755 /usr/share/keyrings
-          curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
-          echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared focal main' | sudo tee /etc/apt/sources.list.d/cloudflared.list
-          sudo apt update
-          sudo apt install cloudflared
+          sudo systemctl enable apache2
+          sudo systemctl start apache2
 
-      - name: Setup Cloudflare Credentials
+      - name: Install Cloudflare Tunnel (cloudflared)
         run: |
-          # Buat direktori untuk credentials
+          sudo apt-get install -y wget
+          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared-linux-amd64.deb
+
+      - name: Configure Cloudflare Tunnel
+        run: |
           mkdir -p ~/.cloudflared
-          # Simpan certificate dari GitHub Secrets
-          echo "${{ secrets.CLOUDFLARE_CERT }}" > ~/.cloudflared/cert.pem
-          chmod 600 ~/.cloudflared/cert.pem
-
-      - name: Start ttyd
-        run: |
-          nohup ttyd -p 8080 -c user:Root123 bash &
-          
-      - name: Create config file
-        run: |
-          cat > ~/.cloudflared/config.yml << EOL
-          tunnel: 7d92c3d4-daea-488e-bd1f-a78c6c673adf
-          credentials-file: /home/runner/.cloudflared/cert.pem
-          ingress:
-            - hostname: demo.andik252.biz.id
-              service: http://localhost:80
-            - service: http_status:404
-          EOL
+          echo "tunnel: 7d92c3d4-daea-488e-bd1f-a78c6c673adf" > ~/.cloudflared/config.yml
+          echo "credentials-file: /home/runner/.cloudflared/credentials.json" >> ~/.cloudflared/config.yml
+          echo "ingress:" >> ~/.cloudflared/config.yml
+          echo "  - hostname: demo.andik252.biz.id" >> ~/.cloudflared/config.yml
+          echo "    service: http://localhost:80" >> ~/.cloudflared/config.yml
+          echo "  - service: http_status:404" >> ~/.cloudflared/config.yml
 
       - name: Start Cloudflare Tunnel
+        env:
+          CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
         run: |
-          # Jalankan tunnel dengan config file
-          nohup cloudflared tunnel --config ~/.cloudflared/config.yml run 7d92c3d4-daea-488e-bd1f-a78c6c673adf &
-          sleep 10
-          
-          echo "Tunnel URL: https://demo.andik252.biz.id"
-
-      - name: Keep alive
-        run: |
-          while true; do sleep 60; done
+          cloudflared tunnel run 7d92c3d4-daea-488e-bd1f-a78c6c673adf
