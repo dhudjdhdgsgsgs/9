@@ -1,5 +1,5 @@
 name: Ubuntu ttyd
-on: workflow_dispatch:
+on: workflow_dispatch
 
 jobs:
   run-terminal:
@@ -13,25 +13,21 @@ jobs:
           sudo apt update
           sudo apt install ttyd
 
+      - name: Install Node.js and LocalTunnel
+        run: |
+          curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+          sudo apt-get install -y nodejs
+          sudo npm install -g localtunnel
+
       - name: Start ttyd
         run: |
           nohup ttyd -p 8080 -c user:Root123 bash &
-
-      - name: Install Cloudflared
-        run: |
-          # Download dan install Cloudflared
-          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
-          sudo dpkg -i cloudflared-linux-amd64.deb
-
-      - name: Start Cloudflared Tunnel
-        run: |
-          # Jalankan tunnel dengan cloudflared
-          nohup cloudflared tunnel --url http://localhost:8080 &
           
-      - name: Get Tunnel URL
+      - name: Start LocalTunnel
         run: |
+          nohup lt --port 8080 &
           sleep 10
-          echo "Tunnel URL akan muncul di log cloudflared"
+          curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url' || echo "URL can be found in GitHub Actions log"
 
       - name: Keep alive
         run: |
