@@ -33,6 +33,8 @@ jobs:
         run: |
           mkdir -p ~/.cloudflared
           echo "${{ secrets.TUNNEL_CREDENTIALS }}" | base64 --decode > ~/.cloudflared/7d92c3d4-daea-488e-bd1f-a78c6c673adf.json
+          # Memeriksa isi file kredensial
+          cat ~/.cloudflared/7d92c3d4-daea-488e-bd1f-a78c6c673adf.json
 
       - name: Configure Existing Tunnel
         run: |
