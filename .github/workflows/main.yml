@@ -29,13 +29,10 @@ jobs:
           wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
           sudo dpkg -i cloudflared-linux-amd64.deb
 
-      - name: Authenticate Cloudflare and Setup Tunnel Config
-        env:
-          CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_TOKEN }}
+      - name: Setup Tunnel Credentials
         run: |
           mkdir -p ~/.cloudflared
-          echo $CLOUDFLARE_TOKEN | cloudflared tunnel login
-          # Tidak membuat tunnel baru, hanya menyiapkan konfigurasi
+          echo "${{ secrets.TUNNEL_CREDENTIALS }}" | base64 --decode > ~/.cloudflared/7d92c3d4-daea-488e-bd1f-a78c6c673adf.json
 
       - name: Configure Existing Tunnel
         run: |
