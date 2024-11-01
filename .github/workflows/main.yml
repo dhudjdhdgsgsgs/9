@@ -26,13 +26,21 @@ jobs:
         run: |
           nohup ttyd -p 8080 -c user:Root123 bash &
           
-      - name: Start Cloudflare Tunnel
+      - name: Start Cloudflare Tunnel and Display URL
         env:
           TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
+          TUNNEL_NAME: ${{ secrets.CLOUDFLARE_TUNNEL_NAME }}
         run: |
           # Jalankan tunnel menggunakan token
           nohup cloudflared tunnel run --token ${TUNNEL_TOKEN} &
           sleep 10
+          
+          # Tampilkan informasi tunnel yang sedang berjalan
+          echo "Tunnel URL Information:"
+          cloudflared tunnel info ${TUNNEL_NAME}
+          
+          # Tampilkan URL untuk akses (sesuaikan dengan domain Anda)
+          echo "Your tunnel URL: https://${TUNNEL_NAME}.andik252.biz.id"
 
       - name: Keep alive
         run: |
