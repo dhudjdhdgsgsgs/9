@@ -1,51 +1,49 @@
-name: CI/CD for Web Server
+name: Web Server with Cloudflared Tunnel
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
-  build:
+  setup-and-tunnel:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          node-version: '16' # Ganti dengan versi Node.js yang Anda inginkan
-
-      - name: Create simple web server
+          python-version: '3.x'
+          
+      - name: Create simple web server file
         run: |
-          echo "const http = require('http');" > server.js
-          echo "const hostname = '0.0.0.0';" >> server.js
-          echo "const port = 3000;" >> server.js
-          echo "const server = http.createServer((req, res) => {" >> server.js
-          echo "    res.statusCode = 200;" >> server.js
-          echo "    res.setHeader('Content-Type', 'text/plain');" >> server.js
-          echo "    res.end('Hello World\\n');" >> server.js
-          echo "});" >> server.js
-          echo "server.listen(port, hostname, () => {" >> server.js
-          echo "    console.log(\`Server running at http://\${hostname}:\${port}/\`);" >> server.js
-          echo "});" >> server.js
-
-      - name: Start the web server
+          echo '
+          from http.server import HTTPServer, SimpleHTTPRequestHandler
+          import socket
+          
+          class Handler(SimpleHTTPRequestHandler):
+              def do_GET(self):
+                  self.send_response(200)
+                  self.send_header("Content-type", "text/html")
+                  self.end_headers()
+                  self.wfile.write(b"Hello, World!")
+          
+          httpd = HTTPServer(("", 8000), Handler)
+          print("Server running at http://localhost:8000")
+          httpd.serve_forever()
+          ' > server.py
+          
+      - name: Install cloudflared
         run: |
-          nohup node server.js &
-          sleep 5 # Tunggu server untuk mulai
-
-      - name: Install Cloudflare Tunnel
+          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared-linux-amd64.deb
+          
+      - name: Start web server
+        run: python server.py &
+        
+      - name: Start cloudflared tunnel
         run: |
-          sudo apt-get update
-          sudo apt-get install -y cloudflared
-
-      - name: Authenticate Cloudflare Tunnel
-        run: |
-          echo "${{ secrets.CLOUDFLARE_TOKEN }}" | cloudflared tunnel login
-
-      - name: Run Cloudflare Tunnel
-        run: |
-          cloudflared tunnel --url http://localhost:3000 --no-autoupdate --loglevel info
+          cloudflared tunnel --url http://localhost:8000
