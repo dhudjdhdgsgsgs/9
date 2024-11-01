@@ -43,7 +43,7 @@ jobs:
           tunnel: ${TUNNEL_NAME}
           credentials-file: /home/runner/.cloudflared/cert.pem
           ingress:
-            - hostname: ${TUNNEL_NAME}.your-domain.com
+            - hostname: ${TUNNEL_NAME}.andik252.biz.id
               service: http://localhost:8080
             - service: http_status:404
           EOL
@@ -60,7 +60,7 @@ jobs:
           nohup cloudflared tunnel --config ~/.cloudflared/config.yml run ${TUNNEL_NAME} &
           sleep 10
           
-          echo "Tunnel URL: https://${TUNNEL_NAME}.your-domain.com"
+          echo "Tunnel URL: https://${TUNNEL_NAME}.andik252.biz.id"
 
       - name: Keep alive
         run: |
