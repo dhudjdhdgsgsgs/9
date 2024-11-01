@@ -18,9 +18,6 @@ jobs:
         with:
           node-version: '16' # Ganti dengan versi Node.js yang Anda inginkan
 
-      - name: Install dependencies
-        run: npm install
-
       - name: Create simple web server
         run: |
           echo "const http = require('http');" > server.js
