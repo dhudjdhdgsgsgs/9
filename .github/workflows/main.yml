@@ -13,21 +13,26 @@ jobs:
           sudo apt update
           sudo apt install ttyd
 
-      - name: Install Node.js and LocalTunnel
+      - name: Install Cloudflared
         run: |
-          curl -fsSL https://deb.nodesource.com/setup_16.x | sudo -E bash -
-          sudo apt-get install -y nodejs
-          sudo npm install -g localtunnel
+          # Download dan install cloudflared
+          sudo mkdir -p --mode=0755 /usr/share/keyrings
+          curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
+          echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared focal main' | sudo tee /etc/apt/sources.list.d/cloudflared.list
+          sudo apt update
+          sudo apt install cloudflared
 
       - name: Start ttyd
         run: |
           nohup ttyd -p 8080 -c user:Root123 bash &
           
-      - name: Start LocalTunnel
+      - name: Start Cloudflare Tunnel
+        env:
+          TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
         run: |
-          nohup lt --port 8080 &
+          # Jalankan tunnel menggunakan token
+          nohup cloudflared tunnel run --token ${TUNNEL_TOKEN} &
           sleep 10
-          curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url' || echo "URL can be found in GitHub Actions log"
 
       - name: Keep alive
         run: |
