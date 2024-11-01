@@ -10,8 +10,10 @@ jobs:
     runs-on: ubuntu-latest
     
     env:
-      TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
-      
+      TUNNEL_NAME: my-github-tunnel  # Nama tunnel Anda
+      TUNNEL_SUBDOMAIN: myapp        # Subdomain yang diinginkan
+      DOMAIN: example.com            # Domain Cloudflare Anda
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -44,22 +46,31 @@ jobs:
           wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
           sudo dpkg -i cloudflared-linux-amd64.deb
           
-      - name: Debug token presence
+      - name: Authenticate cloudflared
         run: |
-          if [ -z "$TUNNEL_TOKEN" ]; then
-            echo "Error: TUNNEL_TOKEN is empty"
-            exit 1
-          fi
-          echo "Token length: ${#TUNNEL_TOKEN} characters"
-          echo "Token starts with: ${TUNNEL_TOKEN:0:10}..."
+          echo "${{ secrets.CLOUDFLARE_CERT }}" > ~/.cloudflared/cert.pem
+          
+      - name: Create tunnel configuration
+        run: |
+          mkdir -p ~/.cloudflared
+          echo "
+          tunnel: ${{ env.TUNNEL_NAME }}
+          credentials-file: /home/runner/.cloudflared/credentials.json
+          
+          ingress:
+            - hostname: ${{ env.TUNNEL_SUBDOMAIN }}.${{ env.DOMAIN }}
+              service: http://localhost:8000
+            - service: http_status:404
+          " > ~/.cloudflared/config.yml
           
       - name: Start web server
         run: python server.py &
         
-      - name: Start cloudflared tunnel
+      - name: Create and run tunnel
         run: |
-          echo "Starting tunnel..."
-          # Tambahkan debug info
-          cloudflared version
-          # Jalankan tunnel dengan token
-          cloudflared tunnel --origincert ~/.cloudflared/cert.pem run --token "$TUNNEL_TOKEN" --url http://localhost:8000
+          cloudflared tunnel login
+          cloudflared tunnel create ${{ env.TUNNEL_NAME }}
+          cloudflared tunnel route dns ${{ env.TUNNEL_NAME }} ${{ env.TUNNEL_SUBDOMAIN }}.${{ env.DOMAIN }}
+          cloudflared tunnel run ${{ env.TUNNEL_NAME }}
+        env:
+          TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
