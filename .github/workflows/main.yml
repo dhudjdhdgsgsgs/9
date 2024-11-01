@@ -15,53 +15,73 @@ jobs:
 
       - name: Install Cloudflared
         run: |
-          # Download dan install cloudflared
-          sudo mkdir -p --mode=0755 /usr/share/keyrings
-          curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
-          echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared focal main' | sudo tee /etc/apt/sources.list.d/cloudflared.list
-          sudo apt update
-          sudo apt install cloudflared
-
-      - name: Setup Cloudflare Credentials
-        env:
-          TUNNEL_CERT: ${{ secrets.CLOUDFLARE_CERT }}
-        run: |
-          # Buat direktori untuk credentials
-          mkdir -p ~/.cloudflared
-          # Simpan certificate
-          echo "$TUNNEL_CERT" > ~/.cloudflared/cert.pem
-          # Set permissions
-          chmod 600 ~/.cloudflared/cert.pem
+          # Download dan install cloudflared versi terbaru
+          curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
+          sudo dpkg -i cloudflared.deb
+          rm cloudflared.deb
 
       - name: Start ttyd
         run: |
           nohup ttyd -p 8080 -c user:Root123 bash &
+          echo "Menunggu ttyd siap..."
+          sleep 5
           
-      - name: Create config file
+      - name: Verify ttyd
         run: |
-          cat > ~/.cloudflared/config.yml << EOL
-          tunnel: ${TUNNEL_NAME}
-          credentials-file: /home/runner/.cloudflared/cert.pem
-          ingress:
-            - hostname: ${TUNNEL_NAME}.andik252.biz.id
-              service: http://localhost:8080
-            - service: http_status:404
-          EOL
+          if curl -s http://localhost:8080 > /dev/null; then
+            echo "✅ ttyd berjalan dengan baik di port 8080"
+          else
+            echo "❌ ttyd tidak berjalan"
+            exit 1
+          fi
 
-      - name: Start Cloudflare Tunnel
+      - name: Start and Verify Cloudflare Tunnel
         env:
           TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
-          TUNNEL_NAME: ${{ secrets.CLOUDFLARE_TUNNEL_NAME }}
         run: |
-          # Login ke Cloudflare
-          cloudflared tunnel login
+          # Jalankan tunnel dengan token
+          echo "🚀 Memulai Cloudflare tunnel..."
+          nohup cloudflared service install ${TUNNEL_TOKEN} &
+          sleep 5
           
-          # Jalankan tunnel dengan config file
-          nohup cloudflared tunnel --config ~/.cloudflared/config.yml run ${TUNNEL_NAME} &
+          # Start tunnel service
+          sudo systemctl start cloudflared
           sleep 10
           
-          echo "Tunnel URL: https://${TUNNEL_NAME}.andik252.biz.id"
+          # Cek status tunnel
+          echo "🔍 Memeriksa status tunnel..."
+          if sudo systemctl is-active cloudflared; then
+            echo "✅ Tunnel service aktif"
+          else
+            echo "❌ Tunnel service tidak aktif"
+            sudo systemctl status cloudflared
+            exit 1
+          fi
+          
+          # Tampilkan log tunnel
+          echo "📋 Log tunnel terakhir:"
+          sudo journalctl -u cloudflared -n 50 --no-pager
+          
+          # Cek koneksi tunnel
+          echo "🌐 Memeriksa koneksi tunnel..."
+          if cloudflared tunnel info; then
+            echo "✅ Tunnel terhubung"
+          else
+            echo "❌ Tunnel tidak terhubung"
+            exit 1
+          fi
 
       - name: Keep alive
         run: |
-          while true; do sleep 60; done
+          while true; do
+            echo "🔄 Memeriksa status layanan..."
+            if ! sudo systemctl is-active cloudflared > /dev/null; then
+              echo "🔄 Mencoba restart tunnel..."
+              sudo systemctl restart cloudflared
+            fi
+            if ! curl -s http://localhost:8080 > /dev/null; then
+              echo "🔄 Mencoba restart ttyd..."
+              nohup ttyd -p 8080 -c user:Root123 bash &
+            fi
+            sleep 60
+          done
