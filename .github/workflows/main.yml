@@ -26,10 +26,9 @@ jobs:
         run: |
           # Buat direktori untuk credentials
           mkdir -p ~/.cloudflared
-          # Simpan certificate (ganti dengan .json jika diperlukan)
-          echo "${{ secrets.CLOUDFLARE_CERT }}" > ~/.cloudflared/.json
-          # Set permissions
-          chmod 600 ~/.cloudflared/.json
+          # Simpan certificate dari GitHub Secrets
+          echo "${{ secrets.CLOUDFLARE_CERT }}" > ~/.cloudflared/cert.pem
+          chmod 600 ~/.cloudflared/cert.pem
 
       - name: Start ttyd
         run: |
@@ -39,7 +38,7 @@ jobs:
         run: |
           cat > ~/.cloudflared/config.yml << EOL
           tunnel: 7d92c3d4-daea-488e-bd1f-a78c6c673adf
-          credentials-file: /home/runner/.cloudflared/.json
+          credentials-file: /home/runner/.cloudflared/cert.pem
           ingress:
             - hostname: demo.andik252.biz.id
               service: http://localhost:80
