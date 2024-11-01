@@ -1,35 +1,51 @@
-name: Cloudflare Tunnel
-
-on:
-  push:
-    branches:
-      - main
+name: Tunnel Setup
+on: workflow_dispatch
 
 jobs:
-  cloudflared:
+  setup-tunnel:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Install dependencies
+      - name: Install cloudflared
         run: |
-          sudo apt-get update
-          sudo apt-get install -y curl
+          # Download dan install cloudflared
+          sudo mkdir -p --mode=0755 /usr/share/keyrings
+          curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
+          echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared focal main' | sudo tee /etc/apt/sources.list.d/cloudflared.list
+          sudo apt update && sudo apt install cloudflared
 
-      - name: Install Cloudflared
+      - name: Setup ngrok
         run: |
-          curl -LO https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
-          sudo mv cloudflared-linux-amd64 /usr/local/bin/cloudflared
-          sudo chmod +x /usr/local/bin/cloudflared
+          # Install ngrok
+          curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+          echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+          sudo apt update && sudo apt install ngrok
+          
+          # Konfigurasi token ngrok
+          ngrok config add-authtoken ${{ secrets.NGROK_TOKEN }}
+          
+          # Jalankan ngrok di port 8080
+          nohup ngrok http 8080 &
 
-      - name: Authenticate with Cloudflare
+      - name: Start cloudflared tunnel
         run: |
-          echo ${{ secrets.CLOUDFLARE_TOKEN }} | cloudflared tunnel login
+          # Login ke cloudflare (gunakan token)
+          cloudflared tunnel login
+          
+          # Buat tunnel baru
+          cloudflared tunnel create tunnel-demo
+          
+          # Konfigurasi tunnel
+          cloudflared tunnel route dns tunnel-demo tunnel-demo.yourdomain.com
+          
+          # Jalankan tunnel
+          nohup cloudflared tunnel run --url localhost:4040 tunnel-demo &
 
-      - name: Start Existing Cloudflare Tunnel
+      - name: Keep alive
         run: |
-          cloudflared tunnel run demo &
-          echo "Keeping the tunnel alive..."
-          while true; do sleep 60; done
+          while true; do
+            echo "Tunnel running..."
+            sleep 300
+          done
