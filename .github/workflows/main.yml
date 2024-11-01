@@ -1,4 +1,4 @@
-name: Web Server with Cloudflared Tunnel
+name: Web Server with Cloudflared Custom Domain
 
 on:
   push:
@@ -9,6 +9,9 @@ jobs:
   setup-and-tunnel:
     runs-on: ubuntu-latest
     
+    env:
+      TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
+      
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -46,4 +49,4 @@ jobs:
         
       - name: Start cloudflared tunnel
         run: |
-          cloudflared tunnel --url http://localhost:8000
+          cloudflared tunnel run --token $TUNNEL_TOKEN
