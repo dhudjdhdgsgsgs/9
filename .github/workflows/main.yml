@@ -15,28 +15,44 @@ jobs:
 
       - name: Install Cloudflared
         run: |
-          curl -L --output cloudflared.deb https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
-          sudo dpkg -i cloudflared.deb
+          # Download dan install cloudflared
+          sudo mkdir -p --mode=0755 /usr/share/keyrings
+          curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg | sudo tee /usr/share/keyrings/cloudflare-main.gpg >/dev/null
+          echo 'deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] https://pkg.cloudflare.com/cloudflared focal main' | sudo tee /etc/apt/sources.list.d/cloudflared.list
+          sudo apt update
+          sudo apt install cloudflared
+
+      - name: Setup Cloudflare Credentials
+        run: |
+          # Buat direktori untuk credentials
+          mkdir -p ~/.cloudflared
+          # Simpan certificate (ganti dengan .json jika diperlukan)
+          echo "${{ secrets.CLOUDFLARE_CERT }}" > ~/.cloudflared/.json
+          # Set permissions
+          chmod 600 ~/.cloudflared/.json
 
       - name: Start ttyd
         run: |
           nohup ttyd -p 8080 -c user:Root123 bash &
-          sleep 5
           
-      - name: Run Cloudflare Tunnel
-        env:
-          TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
+      - name: Create config file
         run: |
-          # Jalankan tunnel langsung dengan token
-          cloudflared service install
-          nohup cloudflared tunnel --no-autoupdate run --token $TUNNEL_TOKEN &
+          cat > ~/.cloudflared/config.yml << EOL
+          tunnel: 7d92c3d4-daea-488e-bd1f-a78c6c673adf
+          credentials-file: /home/runner/.cloudflared/.json
+          ingress:
+            - hostname: demo.andik252.biz.id
+              service: http://localhost:80
+            - service: http_status:404
+          EOL
+
+      - name: Start Cloudflare Tunnel
+        run: |
+          # Jalankan tunnel dengan config file
+          nohup cloudflared tunnel --config ~/.cloudflared/config.yml run 7d92c3d4-daea-488e-bd1f-a78c6c673adf &
+          sleep 10
           
-          # Tunggu tunnel terhubung
-          sleep 15
-          
-          # Cek status tunnel
-          ps aux | grep cloudflared
-          echo "Tunnel should now be running. Check your Cloudflare Zero Trust Dashboard for the status."
+          echo "Tunnel URL: https://demo.andik252.biz.id"
 
       - name: Keep alive
         run: |
