@@ -23,6 +23,13 @@ jobs:
         sudo systemctl start apache2
         sudo systemctl enable apache2
 
+    - name: Install Cloudflare Tunnel (cloudflared)
+      run: |
+        sudo apt install -y wget
+        wget https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64
+        sudo mv cloudflared-linux-amd64 /usr/local/bin/cloudflared
+        sudo chmod +x /usr/local/bin/cloudflared
+
     - name: Setup Cloudflare Tunnel
       run: |
         echo "${{ secrets.cert.pem }}" > cert.pem
