@@ -42,6 +42,7 @@ jobs:
         run: |
           echo "tunnel: 7d92c3d4-daea-488e-bd1f-a78c6c673adf" > ~/.cloudflared/config.yml
           echo "credentials-file: /home/runner/.cloudflared/7d92c3d4-daea-488e-bd1f-a78c6c673adf.json" >> ~/.cloudflared/config.yml
+          echo "protocol: http2" >> ~/.cloudflared/config.yml
           echo "ingress:" >> ~/.cloudflared/config.yml
           echo "  - hostname: demo.andik252.biz.id" >> ~/.cloudflared/config.yml
           echo "    service: http://localhost:80" >> ~/.cloudflared/config.yml
