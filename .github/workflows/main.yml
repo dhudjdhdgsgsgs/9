@@ -1,34 +1,32 @@
-name: Ubuntu SSH Hub
+name: Ubuntu ttyd
 
-on: 
+on:
   workflow_dispatch:
 
 jobs:
-  ssh-access:
+  run-terminal:
     runs-on: ubuntu-latest
+    timeout-minutes: 360  # Set timeout maksimum ke 6 jam
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Install OpenSSH Server
+    - name: Install ttyd (Web-based Terminal)
       run: |
         sudo apt update
-        sudo apt install -y openssh-server
-        sudo service ssh start
-        echo "root:Root123" | sudo chpasswd  # Set password for root
+        sudo apt install ttyd
 
-    - name: Allow root login
+    - name: Start ttyd (Terminal on Web with Authentication)
       run: |
-        sudo sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
-        sudo service ssh restart  # Restart SSH service for changes to take effect
+        nohup ttyd -p 8080 -c user:Root123 bash &
 
     - name: Setup ngrok
       run: |
         curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
         echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
-        sudo apt update && sudo apt install -y ngrok
+        sudo apt update && sudo apt install ngrok
         ngrok config add-authtoken ${{ secrets.TOKEN }}
-        nohup ngrok tcp 22 &
+        nohup ngrok http 8080 &
 
     - name: Get ngrok URL
       run: |
