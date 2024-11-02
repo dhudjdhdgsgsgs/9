@@ -1,76 +1,40 @@
-name: Web Server with Cloudflared Custom Domain
+name: Ubuntu SSH Hub
 
-on:
-  push:
-    branches: [ main ]
+on: 
   workflow_dispatch:
 
 jobs:
-  setup-and-tunnel:
+  ssh-access:
     runs-on: ubuntu-latest
-    
-    env:
-      TUNNEL_NAME: my-github-tunnel  # Nama tunnel Anda
-      TUNNEL_SUBDOMAIN: myapp        # Subdomain yang diinginkan
-      DOMAIN: example.com            # Domain Cloudflare Anda
-    
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
-          
-      - name: Create simple web server file
-        run: |
-          echo '
-          from http.server import HTTPServer, SimpleHTTPRequestHandler
-          import socket
-          
-          class Handler(SimpleHTTPRequestHandler):
-              def do_GET(self):
-                  self.send_response(200)
-                  self.send_header("Content-type", "text/html")
-                  self.end_headers()
-                  self.wfile.write(b"Hello, World!")
-          
-          httpd = HTTPServer(("", 8000), Handler)
-          print("Server running at http://localhost:8000")
-          httpd.serve_forever()
-          ' > server.py
-          
-      - name: Install cloudflared
-        run: |
-          wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb
-          sudo dpkg -i cloudflared-linux-amd64.deb
-          
-      - name: Authenticate cloudflared
-        run: |
-          echo "${{ secrets.CLOUDFLARE_CERT }}" > ~/.cloudflared/cert.pem
-          
-      - name: Create tunnel configuration
-        run: |
-          mkdir -p ~/.cloudflared
-          echo "
-          tunnel: ${{ env.TUNNEL_NAME }}
-          credentials-file: /home/runner/.cloudflared/credentials.json
-          
-          ingress:
-            - hostname: ${{ env.TUNNEL_SUBDOMAIN }}.${{ env.DOMAIN }}
-              service: http://localhost:8000
-            - service: http_status:404
-          " > ~/.cloudflared/config.yml
-          
-      - name: Start web server
-        run: python server.py &
-        
-      - name: Create and run tunnel
-        run: |
-          cloudflared tunnel login
-          cloudflared tunnel create ${{ env.TUNNEL_NAME }}
-          cloudflared tunnel route dns ${{ env.TUNNEL_NAME }} ${{ env.TUNNEL_SUBDOMAIN }}.${{ env.DOMAIN }}
-          cloudflared tunnel run ${{ env.TUNNEL_NAME }}
-        env:
-          TUNNEL_TOKEN: ${{ secrets.CLOUDFLARE_TUNNEL_TOKEN }}
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install OpenSSH Server
+      run: |
+        sudo apt update
+        sudo apt install -y openssh-server
+        sudo service ssh start
+        echo "root:Root123" | sudo chpasswd  # Set password for root
+
+    - name: Allow root login
+      run: |
+        sudo sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
+        sudo service ssh restart  # Restart SSH service for changes to take effect
+
+    - name: Setup ngrok
+      run: |
+        curl -s https://ngrok-agent.s3.amazonaws.com/ngrok.asc | sudo tee /etc/apt/trusted.gpg.d/ngrok.asc >/dev/null
+        echo "deb https://ngrok-agent.s3.amazonaws.com buster main" | sudo tee /etc/apt/sources.list.d/ngrok.list
+        sudo apt update && sudo apt install -y ngrok
+        ngrok config add-authtoken ${{ secrets.TOKEN }}
+        nohup ngrok tcp 22 &
+
+    - name: Get ngrok URL
+      run: |
+        sleep 10
+        curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url'
+
+    - name: Keep alive
+      run: |
+        while true; do sleep 60; done
